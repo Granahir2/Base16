@@ -40,6 +40,7 @@ import qualified Data.Text.Encoding as T
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable
+import Data.ByteString.Base16.Internal.SIMD
 
 -- $setup
 --
@@ -70,7 +71,11 @@ encodeBase16 = fmap T.decodeUtf8 . encodeBase16'
 -- "53756e"
 --
 encodeBase16' :: ByteString -> Base16 ByteString
-encodeBase16' = assertBase16 . encodeBase16_
+encodeBase16' =
+    if c_isSIMDAvailable
+    then encodeBase16SIMD
+    else assertBase16 . encodeBase16_
+
 {-# INLINE encodeBase16' #-}
 
 -- | Decode a Base16-encoded 'ByteString' value.
@@ -83,7 +88,10 @@ encodeBase16' = assertBase16 . encodeBase16_
 -- "Sun"
 --
 decodeBase16 :: Base16 ByteString -> ByteString
-decodeBase16 = decodeBase16Typed_
+decodeBase16 =
+    if c_isSIMDAvailable 
+    then decodeBase16SIMD
+    else decodeBase16Typed_
 {-# INLINE decodeBase16 #-}
 
 -- | Decode Base16 'Text'.
@@ -112,7 +120,10 @@ decodeBase16' = decodeBase16Typed_ . fmap T.encodeUtf8
 -- Left "invalid character at offset: 1"
 --
 decodeBase16Untyped :: ByteString -> Either Text ByteString
-decodeBase16Untyped = decodeBase16_
+decodeBase16Untyped =
+    if c_isSIMDAvailable
+    then decodeBase16UntypedSIMD
+    else decodeBase16_
 {-# INLINE decodeBase16Untyped #-}
 
 -- | Decode a Base16-encoded 'ByteString' value leniently, using a

@@ -39,6 +39,7 @@ library
     Data.ByteString.Lazy.Base16
     Data.ByteString.Short.Base16
     Data.Text.Encoding.Base16
+    Data.ByteString.Base16.Internal.SIMD
     Data.Text.Encoding.Base16.Error
     Data.Text.Lazy.Encoding.Base16
     Data.Text.Short.Encoding.Base16
@@ -63,7 +64,10 @@ library
   ghc-options:      -Wall
 
   include-dirs: cbits
-  c-sources: cbits/base16.c cbits/avx_base16.c cbits/sse_base16.c
+  c-sources:
+    cbits/base16.c
+    cbits/avx_base16.c
+    cbits/sse_base16.c
   cc-options: -O3 -std=c23
 
 test-suite base16-tests

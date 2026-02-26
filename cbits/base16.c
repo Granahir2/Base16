@@ -42,6 +42,17 @@ static bool (*resolve_isvalid (void)) (const uint8_t* restrict,size_t){
 	return nullptr;
 }
 
+bool isSIMDAvailable() {
+
+#ifdef __x86_64__
+	if(__builtin_cpu_supports("sse4.1")) {
+		return true;
+	}
+#endif
+
+	return false;
+}
+
 void encodeBase16(const uint8_t* restrict input, size_t len, uint8_t* restrict output)
 __attribute__ ((ifunc ("resolve_encode")));
 

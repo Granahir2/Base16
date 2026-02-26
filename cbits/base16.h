@@ -14,6 +14,10 @@ void decodeBase16(const uint8_t* restrict input, size_t len, uint8_t* restrict o
 // Checks that input obeys the valid alphabet
 bool isValidBase16(const uint8_t* restrict input, size_t len);
 
+// Checks that the above functions are legal to call, i.e. there is some
+// available implementation that will run on the current machine.
+bool isSIMDAvailable();
+
 // The above functions are indirect: at object load time, CPU features are probed
 // and the appropriate vectorized version is chosen among the set below.
 // Note that if SSE 4.1 is not supported, then they will crash!

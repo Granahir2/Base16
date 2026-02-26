@@ -33,8 +33,8 @@ void sse_encodeBase16(const uint8_t* restrict input, size_t len,
 		auto ret1 = _mm_unpacklo_epi8(highs, lows);
 		auto ret2 = _mm_unpackhi_epi8(highs, lows);
 
-		_mm_store_si128(o_ptr,   ret1);
-		_mm_store_si128(o_ptr+1, ret2);
+		_mm_storeu_si128(o_ptr,   ret1);
+		_mm_storeu_si128(o_ptr+1, ret2);
 	}
 
 	const uint8_t* rem_i_ptr = (const uint8_t*)i_ptr;

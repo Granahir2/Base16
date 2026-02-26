@@ -40,8 +40,8 @@ void avx_encodeBase16(const uint8_t* restrict input, size_t len,
 		auto ret1 = _mm256_unpacklo_epi8(highs, lows);
 		auto ret2 = _mm256_unpackhi_epi8(highs, lows);
 
-		_mm256_store_si256(o_ptr,   ret1);
-		_mm256_store_si256(o_ptr+1, ret2);
+		_mm256_storeu_si256(o_ptr,   ret1);
+		_mm256_storeu_si256(o_ptr+1, ret2);
 	}
 
 	const uint8_t* rem_i_ptr = (const uint8_t*)i_ptr;

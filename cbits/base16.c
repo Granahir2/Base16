@@ -1,9 +1,8 @@
 #include "base16.h"
 
 static void (*resolve_encode (void)) (const uint8_t* restrict,size_t,uint8_t* restrict) {
-	__builtin_cpu_init();
-
 #ifdef __x86_64__
+	__builtin_cpu_init();
 	if(__builtin_cpu_supports("avx2")) {
 		return avx_encodeBase16;
 	} else if(__builtin_cpu_supports("sse4.1")) {
@@ -15,9 +14,8 @@ static void (*resolve_encode (void)) (const uint8_t* restrict,size_t,uint8_t* re
 }
 
 static void (*resolve_decode (void)) (const uint8_t* restrict,size_t,uint8_t* restrict) {
-	__builtin_cpu_init();
-
 #ifdef __x86_64__
+	__builtin_cpu_init();
 	if(__builtin_cpu_supports("avx2")) {
 		return avx_decodeBase16;
 	} else if(__builtin_cpu_supports("sse4.1")) {
@@ -29,9 +27,8 @@ static void (*resolve_decode (void)) (const uint8_t* restrict,size_t,uint8_t* re
 }
 
 static bool (*resolve_isvalid (void)) (const uint8_t* restrict,size_t){
-	__builtin_cpu_init();
-
 #ifdef __x86_64__
+	__builtin_cpu_init();
 	if(__builtin_cpu_supports("avx2")) {
 		return avx_isValidBase16;
 	} else if(__builtin_cpu_supports("sse4.1")) {

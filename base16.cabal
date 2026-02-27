@@ -68,7 +68,7 @@ library
     cbits/base16.c
     cbits/avx_base16.c
     cbits/sse_base16.c
-  cc-options: -O3 -std=c23
+  cc-options: -O3 -std=c2x
 
 test-suite base16-tests
   other-modules:    Internal

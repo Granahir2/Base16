@@ -24,6 +24,7 @@ module Data.ByteString.Base16
 , isBase16
 , isValidBase16
 , parseBase16
+, encodeBase16_
 ) where
 
 

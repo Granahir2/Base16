@@ -37,7 +37,6 @@ import Data.ByteString.Base16.Internal.Head
 import Data.ByteString.Base16.Internal.Utils (aix)
 import Data.Text (Text)
 import qualified Data.Text.Encoding as T
-
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable
@@ -186,8 +185,10 @@ parseBase16 bs = assertBase16 bs <$ decodeBase16Untyped bs
 -- True
 --
 isValidBase16 :: ByteString -> Bool
-isValidBase16 (BS ptr len) =
-    accursedUnutterablePerformIO $ do
+isValidBase16 bs@(BS ptr len) =
+    if c_isSIMDAvailable
+    then isValidBase16SIMD bs
+    else accursedUnutterablePerformIO $ do
         withForeignPtr ptr $ \bptr ->
             go bptr (plusPtr bptr len)
   where

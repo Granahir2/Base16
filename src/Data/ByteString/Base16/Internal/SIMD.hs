@@ -27,10 +27,10 @@ import qualified Foreign.Marshal.Utils as Foreign
 import Data.Text (Text)
 import Data.Base16.Types (assertBase16)
 
-foreign import capi "base16.h isSIMDAvailable"
+foreign import ccall "isSIMDAvailable"
   c_isSIMDAvailable :: Bool
 
-foreign import capi "base16.h encodeBase16"
+foreign import ccall "encodeBase16"
   c_encodeBase16SIMD
     :: Ptr CUChar
       -- ^ Buffer that holds the input value
@@ -40,7 +40,7 @@ foreign import capi "base16.h encodeBase16"
       -- ^ Buffer that will hold the encoded base16
     -> IO ()
 
-foreign import capi "base16.h isValidBase16"
+foreign import ccall "isValidBase16"
   c_isValidBase16SIMD
     :: Ptr CUChar
       -- ^ Buffer that holds the value to be validated
@@ -48,7 +48,7 @@ foreign import capi "base16.h isValidBase16"
       -- ^ Length of the input
     -> IO Bool
 
-foreign import capi "base16.h decodeBase16"
+foreign import ccall "decodeBase16"
   c_decodeBase16SIMD
     :: Ptr CUChar
       -- ^ Buffer that holds the input base16

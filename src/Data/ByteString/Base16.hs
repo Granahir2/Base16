@@ -25,6 +25,8 @@ module Data.ByteString.Base16
 , isValidBase16
 , parseBase16
 , encodeBase16_
+, decodeBase16Typed_
+, decodeBase16_
 ) where
 
 
@@ -185,10 +187,11 @@ parseBase16 bs = assertBase16 bs <$ decodeBase16Untyped bs
 -- True
 --
 isValidBase16 :: ByteString -> Bool
-isValidBase16 bs@(BS ptr len) =
-    if c_isSIMDAvailable
+isValidBase16 (BS ptr len) =
+    {-if c_isSIMDAvailable
     then isValidBase16SIMD bs
-    else accursedUnutterablePerformIO $ do
+    else -}
+         accursedUnutterablePerformIO $ do
         withForeignPtr ptr $ \bptr ->
             go bptr (plusPtr bptr len)
   where

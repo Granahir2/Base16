@@ -6,8 +6,6 @@
 __attribute__((target("sse4.1,no-avx")))
 void sse_encodeBase16(const uint8_t* restrict input, size_t len,
 		  uint8_t* restrict output) {
-	auto i_ptr = (__m128i*)input;
-	auto o_ptr = (__m128i*)output;
 
 	static const _Alignas(16) uint8_t lookup[16] = {
 		'0','1','2','3','4','5','6','7',
@@ -15,12 +13,38 @@ void sse_encodeBase16(const uint8_t* restrict input, size_t len,
 	};
 
 	const auto masklow =  _mm_set1_epi8(0xf);
-	const auto lut = _mm_lddqu_si128((__m128i*)lookup);
+	const auto lut = _mm_load_si128((__m128i*)lookup);
 
 	const size_t iter_len = sizeof(lut);
 
+	// Fix alignment in input buffer
+	if(__builtin_expect(len >= iter_len, 1)) {
+		auto extra_iters = iter_len - ((intptr_t)(input) & (iter_len-1));
+
+		auto v = _mm_lddqu_si128((__m128i*)(input));
+		auto lows = _mm_and_si128(v, masklow);
+		auto highs = _mm_srli_epi16(v, 4);
+		highs = _mm_and_si128(highs, masklow);
+
+		lows  = _mm_shuffle_epi8(lut, lows);
+		highs = _mm_shuffle_epi8(lut, highs);
+
+		auto ret1 = _mm_unpacklo_epi8(highs, lows);
+		auto ret2 = _mm_unpackhi_epi8(highs, lows);
+
+		_mm_storeu_si128((__m128i*)output,   ret1);
+		_mm_storeu_si128(((__m128i*)output)+1, ret2);
+
+		len -= extra_iters;
+		output += 2*extra_iters;
+		input += extra_iters;
+	}
+
+	auto i_ptr = (__m128i*)input;
+	auto o_ptr = (__m128i*)output;
+
 	for(size_t i = 0; i < len/iter_len; ++i, ++i_ptr, o_ptr+=2) {
-		auto v = _mm_lddqu_si128(i_ptr);
+		auto v = _mm_load_si128(i_ptr);
 
 		auto lows = _mm_and_si128(v, masklow); 
 		auto highs = _mm_srli_epi16(v, 4);
@@ -111,7 +135,6 @@ void sse_decodeBase16(const uint8_t* restrict input, size_t len, uint8_t* restri
 
 __attribute__((target("sse4.1,no-avx")))
 bool sse_isValidBase16(const uint8_t* restrict input, size_t len) {
-	auto i_ptr = (const __m128i*)input;
 
 	// The valid alphabet has three ranges, '0' - '9', 'a' - 'f', 'A'-'F'
 	// Testing that a vector is 0 is easy, so we use _active low_ logic
@@ -127,8 +150,32 @@ bool sse_isValidBase16(const uint8_t* restrict input, size_t len) {
 
 	const size_t iter_len = sizeof(c0);
 
+	if(__builtin_expect(len >= iter_len, 1)) {
+		auto extra_iters = iter_len - ((intptr_t)(input) & (iter_len-1));
+
+		auto x = _mm_lddqu_si128((__m128i*)(input));
+
+		auto num = _mm_or_si128(_mm_cmpgt_epi8(c0, x),
+		                        _mm_cmpgt_epi8(x, c9));
+
+		auto lower = _mm_or_si128(_mm_cmpgt_epi8(ca, x),
+		                          _mm_cmpgt_epi8(x, cf));
+
+		auto upper = _mm_or_si128(_mm_cmpgt_epi8(cA, x),
+		                          _mm_cmpgt_epi8(x, cF));
+
+		// If num && lower && upper == 0, then all characters are good and testz returns 1
+		if(__builtin_expect(!_mm_testz_si128(_mm_and_si128(num, lower), upper) , 0)) {
+			return false;
+		}
+
+		input += extra_iters;
+		len -= extra_iters;
+	}
+
+	auto i_ptr = (const __m128i*)input;
 	for(size_t i = 0; i < len/iter_len; ++i, ++i_ptr) {
-		auto x = _mm_lddqu_si128(i_ptr);
+		auto x = _mm_load_si128(i_ptr);
 
 		auto num = _mm_or_si128(_mm_cmpgt_epi8(c0, x),
 		                        _mm_cmpgt_epi8(x, c9));

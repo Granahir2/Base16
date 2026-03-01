@@ -6,8 +6,6 @@
 __attribute__((target("avx2")))
 void avx_encodeBase16(const uint8_t* restrict input, size_t len,
 		  uint8_t* restrict output) {
-	auto i_ptr = (__m256i*)input;
-	auto o_ptr = (__m256i*)output;
 
 	static const _Alignas(32) uint8_t lookup[32] = {
 		'0','1','2','3','4','5','6','7',
@@ -17,12 +15,40 @@ void avx_encodeBase16(const uint8_t* restrict input, size_t len,
 	};
 
 	const auto masklow =  _mm256_set1_epi8(0xf);
-	const auto lut = _mm256_lddqu_si256((__m256i*)lookup);
+	const auto lut = _mm256_load_si256((__m256i*)lookup);
 
 	const size_t iter_len = sizeof(lut);
 
+	// Fix alignment in input buffer
+	if(__builtin_expect(len >= iter_len, 1)) {
+		auto extra_iters = iter_len - ((intptr_t)(input) & (iter_len-1));
+
+		auto v = _mm256_lddqu_si256((__m256i*)(input));
+		v  = _mm256_permute4x64_epi64(v, 0b11011000);
+
+		auto lows = _mm256_and_si256(v, masklow);
+		auto highs = _mm256_srli_epi16(v, 4);
+		highs = _mm256_and_si256(highs, masklow);
+
+		lows  = _mm256_shuffle_epi8(lut, lows);
+		highs = _mm256_shuffle_epi8(lut, highs);
+
+		auto ret1 = _mm256_unpacklo_epi8(highs, lows);
+		auto ret2 = _mm256_unpackhi_epi8(highs, lows);
+
+		_mm256_storeu_si256((__m256i*)output,   ret1);
+		_mm256_storeu_si256(((__m256i*)output)+1, ret2);
+
+		len -= extra_iters;
+		output += 2*extra_iters;
+		input += extra_iters;
+	}
+
+	auto i_ptr = (__m256i*)input;
+	auto o_ptr = (__m256i*)output;
+
 	for(size_t i = 0; i < len/iter_len; ++i, ++i_ptr, o_ptr+=2) {
-		auto v = _mm256_lddqu_si256(i_ptr);
+		auto v = _mm256_load_si256(i_ptr);
 
 		// Because unpack is kind of awkward in AVX, we need to
 		// shuffle first. That way the first elements end
@@ -127,7 +153,6 @@ void avx_decodeBase16(const uint8_t* restrict input, size_t len, uint8_t* restri
 
 __attribute__((target("avx2")))
 bool avx_isValidBase16(const uint8_t* restrict input, size_t len) {
-	auto i_ptr = (const __m256i*)input;
 
 	// The valid alphabet has three ranges, '0' - '9', 'a' - 'f', 'A'-'F'
 	// Testing that a vector is 0 is easy, so we use _active low_ logic
@@ -143,8 +168,33 @@ bool avx_isValidBase16(const uint8_t* restrict input, size_t len) {
 
 	const size_t iter_len = sizeof(c0);
 
+	if(__builtin_expect(len >= iter_len, 1)) {
+		auto extra_iters = iter_len - ((intptr_t)(input) & (iter_len-1));
+
+		auto x = _mm256_lddqu_si256((__m256i*)input);
+
+		auto num = _mm256_or_si256(_mm256_cmpgt_epi8(c0, x),
+		                           _mm256_cmpgt_epi8(x, c9));
+
+		auto lower = _mm256_or_si256(_mm256_cmpgt_epi8(ca, x),
+		                             _mm256_cmpgt_epi8(x, cf));
+
+		auto upper = _mm256_or_si256(_mm256_cmpgt_epi8(cA, x),
+		                             _mm256_cmpgt_epi8(x, cF));
+
+		// If num && lower && upper == 0, then all characters are good and testz returns 1
+		if(__builtin_expect(!_mm256_testz_si256(_mm256_and_si256(num, lower), upper) , 0)) {
+			return false;
+		}
+
+		input += extra_iters;
+		len -= extra_iters;
+	}
+
+	auto i_ptr = (const __m256i*)input;
+
 	for(size_t i = 0; i < len/iter_len; ++i, ++i_ptr) {
-		auto x = _mm256_lddqu_si256(i_ptr);
+		auto x = _mm256_load_si256(i_ptr);
 
 		auto num = _mm256_or_si256(_mm256_cmpgt_epi8(c0, x),
 		                           _mm256_cmpgt_epi8(x, c9));

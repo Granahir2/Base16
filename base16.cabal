@@ -75,7 +75,7 @@ library
   if arch(javascript) || flag(pure-haskell)
     cpp-options: -DPURE_HASKELL
 
-  if flag(simd) && !arch(javascript) || flag(pure-haskell)
+  if flag(simd) && !(arch(javascript) || flag(pure-haskell))
     cpp-options: -DSIMD
 
     exposed-modules: 

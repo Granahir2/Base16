@@ -1,5 +1,7 @@
 {-# LANGUAGE BangPatterns #-}
 {-# LANGUAGE MagicHash #-}
+{-# LANGUAGE CPP #-}
+{-# OPTIONS_GHC -Wno-unused-matches #-}
 -- |
 -- Module       : Data.ByteString.Base16
 -- Copyright    : (c) 2020-2023 Emily Pillmore
@@ -42,7 +44,9 @@ import qualified Data.Text.Encoding as T
 import Foreign.ForeignPtr
 import Foreign.Ptr
 import Foreign.Storable
-import Data.ByteString.Base16.Internal.SIMD
+#if !defined(PURE_HASKELL) && defined(SIMD)
+import Data.ByteString.Base16.Internal.Simd
+#endif
 
 -- $setup
 --
@@ -74,9 +78,13 @@ encodeBase16 = fmap T.decodeUtf8 . encodeBase16'
 --
 encodeBase16' :: ByteString -> Base16 ByteString
 encodeBase16' =
+#if !defined(PURE_HASKELL) && defined(SIMD)
     if c_isSIMDAvailable
     then encodeBase16SIMD
     else assertBase16 . encodeBase16_
+#else 
+    assertBase16 . encodeBase16_
+#endif
 
 {-# INLINE encodeBase16' #-}
 
@@ -91,9 +99,13 @@ encodeBase16' =
 --
 decodeBase16 :: Base16 ByteString -> ByteString
 decodeBase16 =
+#if !defined(PURE_HASKELL) && defined(SIMD)
     if c_isSIMDAvailable 
     then decodeBase16SIMD
     else decodeBase16Typed_
+#else
+    decodeBase16Typed_
+#endif
 {-# INLINE decodeBase16 #-}
 
 -- | Decode Base16 'Text'.
@@ -123,9 +135,13 @@ decodeBase16' = decodeBase16Typed_ . fmap T.encodeUtf8
 --
 decodeBase16Untyped :: ByteString -> Either Text ByteString
 decodeBase16Untyped =
+#if !defined(PURE_HASKELL) && defined(SIMD)
     if c_isSIMDAvailable
     then decodeBase16UntypedSIMD
     else decodeBase16_
+#else
+    decodeBase16_
+#endif
 {-# INLINE decodeBase16Untyped #-}
 
 -- | Decode a Base16-encoded 'ByteString' value leniently, using a
@@ -187,13 +203,18 @@ parseBase16 bs = assertBase16 bs <$ decodeBase16Untyped bs
 -- True
 --
 isValidBase16 :: ByteString -> Bool
-isValidBase16 (BS ptr len) =
-    {-if c_isSIMDAvailable
+isValidBase16 bs@(BS ptr len) =
+#if !defined(PURE_HASKELL) && defined(SIMD)
+    if c_isSIMDAvailable
     then isValidBase16SIMD bs
-    else -}
-         accursedUnutterablePerformIO $ do
+    else accursedUnutterablePerformIO $ do
         withForeignPtr ptr $ \bptr ->
             go bptr (plusPtr bptr len)
+#else
+    accursedUnutterablePerformIO $ do
+            withForeignPtr ptr $ \bptr ->
+                go bptr (plusPtr bptr len)
+#endif
   where
     !valid = "\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\xff\xff\xff\xff\xff\xff\xff\x0a\x0b\x0c\x0d\x0e\x0f\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\x0a\x0b\x0c\x0d\x0e\x0f\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff\xff"#
     go !bptr !end

@@ -3,7 +3,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Data.ByteString.Base16.Internal.SIMD
+module Data.ByteString.Base16.Internal.Simd
   ( c_isSIMDAvailable
   , c_encodeBase16SIMD
   , c_isValidBase16SIMD

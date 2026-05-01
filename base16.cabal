@@ -32,6 +32,16 @@ source-repository head
   type:     git
   location: https://github.com/emilypi/base16.git
 
+flag simd
+  description: Enable SIMD detection and code paths. It may incur some unnecessary overhead for most workloads.
+  default: False
+  manual: True
+
+flag pure-haskell
+  description: Do not use any C implementation, which is useful when using the JavaScript or WASM compiler backends. This flag disables simd.
+  default: False
+  manual: True
+
 library
   exposed-modules:
     Data.Base16.Types
@@ -39,7 +49,6 @@ library
     Data.ByteString.Lazy.Base16
     Data.ByteString.Short.Base16
     Data.Text.Encoding.Base16
-    Data.ByteString.Base16.Internal.SIMD
     Data.Text.Encoding.Base16.Error
     Data.Text.Lazy.Encoding.Base16
     Data.Text.Short.Encoding.Base16
@@ -63,12 +72,21 @@ library
   default-language: Haskell2010
   ghc-options:      -Wall
 
-  include-dirs: cbits
-  c-sources:
-    cbits/base16.c
-    cbits/avx_base16.c
-    cbits/sse_base16.c
-  cc-options: -O3 -std=c2x
+  if arch(javascript) || flag(pure-haskell)
+    cpp-options: -DPURE_HASKELL
+
+  if flag(simd) && !arch(javascript) || flag(pure-haskell)
+    cpp-options: -DSIMD
+
+    exposed-modules: 
+      Data.ByteString.Base16.Internal.Simd
+
+    include-dirs: cbits
+    c-sources:
+      cbits/base16.c
+      cbits/avx_base16.c
+      cbits/sse_base16.c
+    cc-options: -O3 -std=c2x
 
 test-suite base16-tests
   other-modules:    Internal

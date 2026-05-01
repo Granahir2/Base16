@@ -40,12 +40,14 @@ jobs:
         cabal sdist -z -o .
         cabal get base16-*.tar.gz
         cd base16-*/
-        cabal build base16:tests --enable-tests --enable-benchmarks
-        cabal test --enable-tests --enable-benchmarks --test-show-details=direct all
+        cabal configure --enable-tests --enable-benchmarks -f simd
+        cabal build base16:tests
+        cabal test --test-show-details=direct all
     - name: Bench
       run: |
         cd base16-*/
-        cabal bench --enable-tests --enable-benchmarks --benchmark-option=-l all
+        cabal configure --enable-tests --enable-benchmarks -f simd
+        cabal bench --benchmark-option=-l all
     - name: Haddock
       run: |
         cd base16-*/
